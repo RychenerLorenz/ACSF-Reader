@@ -15,6 +15,9 @@ class Reader():
         self.path = path
         self.file_paths = None
 
+        # label list
+        self.labels = []
+
         # set targets
         self._allowed_targets = ['freq',
                                  'phAngle',
