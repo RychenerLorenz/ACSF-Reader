@@ -15,11 +15,6 @@ class Reader():
         self.path = path
         self.file_paths = None
 
-        # create the dataframe
-        self.data_frame = None
-        self.device_frame = None
-        self.labels = []
-
         # set targets
         self._allowed_targets = ['freq',
                                  'phAngle',
@@ -38,7 +33,8 @@ class Reader():
             is_allowed = self._check_target_value()
             if not all(is_allowed):
                 self.targets = self._allowed_targets
-                warn(f"One of the targets given is not an allowed target.\n Setting the default: {self._allowed_targets}")
+                warn(
+                    f"One of the targets given is not an allowed target.\n Setting the default: {self._allowed_targets}")
         else:
             self.targets = self._allowed_targets
             warn("No targets set. Creating pd.DataFrame for all possible variables.")
@@ -46,10 +42,8 @@ class Reader():
     @staticmethod
     def create_signature_dataset(data_frame):
         """
-
         Creating a dataframe with the shape (n_samples, n_features),
         where the index is the label and the column name the feature name
-
         :param data_frame: dataframe to convert (advised to create this input using this reader)
         :return: dataframe of signatures
         """
@@ -73,9 +67,7 @@ class Reader():
     @staticmethod
     def create_intersession_protocol(data_frame):
         """
-
         Creating the train and test dataframe according to the intersession protocol.
-
         :return: DataFrame Train, DataFrame Test
         """
 
@@ -84,7 +76,37 @@ class Reader():
 
         return df_train, df_test
 
-    def download_data(self, version, save_dir='.', unzip=False, keep_zip=True):
+    @staticmethod
+    def create_label_dict(data_frame: pd.DataFrame) -> dict:
+        """
+        Creating a dictionary with
+
+        key: numerical class
+        value: class label
+
+        :param data_frame: created dataframe
+        :return: dictionary with labels
+        """
+        if data_frame is None:
+            raise ValueError("No Data found.")
+
+        label_dict = {}
+        for i, k in enumerate(data_frame['label'].unique()):
+            label_dict[k] = int(i)
+
+        return label_dict
+
+    def download_data(self, version: int, save_dir: str = '.', unzip: bool = False, keep_zip: bool = True) -> None:
+        """
+
+        Downloading the data,unpack and remove the archive.
+
+        :param version: Download either version 1 or 2 of ACSF-Dataset
+        :param save_dir: Directory to save the data in
+        :param unzip: if True the data is unzipped
+        :param keep_zip: if True the archive is deleted
+        :return: None
+        """
         chunk_size = 128
         save_path = save_dir + "/ACS-F{}.zip".format(version)
 
@@ -110,14 +132,20 @@ class Reader():
     def _check_target_value(self):
         return [x in self._allowed_targets for x in list(self.targets)]
 
-    def set_file_paths(self, path):
+    def set_file_paths(self, path: str) -> None:
+        """
+        Setting the paths of the .xml file, that contain the data
+
+        :param path: root path of the downloaded ACSF-Dataset
+        :return:
+        """
         file_paths = glob(f'{path}/*/*/*.xml')
         if not file_paths:
             raise ValueError(
                 "No .xml files found under this path. Please be sure to provide the correct path to the ACS-F2 files")
         self.file_paths = file_paths
 
-    def set_targets(self, target):
+    def set_targets(self, target: str or list):
         if isinstance(target, str):
             self.targets = [target]
         else:
@@ -125,22 +153,15 @@ class Reader():
 
         is_allowed = self._check_target_value()
         if not all(is_allowed):
-             raise ValueError(f"One of the targets given is not allowed. Please only use: {self._allowed_targets}")
-
-    def to_csv(self, path, name):
-        self.data_frame.to_csv(path + '/' + name)
-
-    def create_label_dict(self):
-        if self.data_frame is None:
-            raise ValueError("No Data found.")
-
-        label_dict = {}
-        for i, k in enumerate(self.data_frame['label'].unique()):
-            label_dict[k] = int(i)
-
-        return label_dict
+            raise ValueError(f"One of the targets given is not allowed. Please only use: {self._allowed_targets}")
 
     def create_dataframe(self, path=None):
+        """
+        Creating a DataFrame fromt he downlaoded .xml files
+
+        :param path: root path of the downloaded, unpacked dataset
+        :return: DataFrame containing the data, DataFrame containing information about the devices.
+        """
         device = []
         device_values = {}
         device_id = 0
@@ -189,12 +210,3 @@ class Reader():
         device_frame = pd.DataFrame(device)
 
         return data_frame, device_frame
-
-
-if __name__ == '__main__':
-    test1 = Reader(target=['phAngle', 'power', 'reacPower', 'rmsCur'])
-    # test1.load_data(version=2, unzip=True, keep_zip=False)
-    test1.create_dataframe(path='../../data/ACSF2/original/Dataset/*/*.xml')
-    df_train, df_test = test1.create_intersession_protocol()
-    df_train_sig = test1.create_signature_set(df_train)
-    # test1.to_csv(path='.', name='ACSFReacPower.csv')
